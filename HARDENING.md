@@ -1,7 +1,7 @@
 # n8n on AWS - Hardening Checklist
 
 Work top to bottom. Each item says WHY it matters. Verified against n8n's own advisories
-and a production hardening checklist (see ../research/01-DEEP-RESEARCH.md for sources).
+and a production hardening checklist (see research/01-DEEP-RESEARCH.md for sources).
 
 ## 0. Patch first
 - [ ] Run n8n **>= 1.123.64**. Versions before that are affected by **CVE-2026-65589**
