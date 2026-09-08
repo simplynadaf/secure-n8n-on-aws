@@ -1,2 +1,57 @@
-# secure-n8n-on-aws
-Secure self-hosted n8n on AWS (2026): the insecure default vs a hardened setup behind Caddy, with AWS Secrets Manager, least-privilege IAM, and a full hardening checklist. Companion to the video.
+# Secure Self-Hosted n8n on AWS (2026)
+
+Most n8n self-host tutorials optimize for convenience: port 5678 open, default settings,
+secrets in plaintext. In 2026 that is dangerous - n8n saw multiple critical CVEs, leaked
+API tokens exposing live instances, and weak-encryption-key recovery from public
+artifacts. n8n is a **credential aggregator**: one instance can hold the keys to Stripe,
+your database, Slack, Google, and more. Compromise it and you get all of them.
+
+This repo shows the risky default setup, then hardens it on AWS with a concrete checklist.
+
+> Companion to the video "Secure Self-Hosted n8n on AWS (2026)". Read `HARDENING.md`.
+
+## What's here
+```
+insecure/docker-compose.yml     # the "before" - insecure ON PURPOSE, do not deploy
+hardened/docker-compose.yml     # the "after" - n8n behind Caddy, patched, no exposed 5678
+hardened/Caddyfile              # TLS + IP-restricted editor, public webhooks only
+iam/n8n-instance-role-policy.json   # least-privilege role: read only the two n8n secrets
+scripts/create-secrets.sh       # store encryption key + DB password in AWS Secrets Manager
+scripts/load-secrets.sh         # load secrets from Secrets Manager, bring up hardened stack
+scripts/verify-hardening.sh     # verify from outside (5678 closed, HTTPS up)
+HARDENING.md                    # the full checklist with the WHY for each item
+```
+
+## The 60-second version
+1. Patch: run n8n **>= 1.123.64** (fixes CVE-2026-65589).
+2. Never expose 5678; put n8n behind Caddy on 443 with TLS.
+3. Restrict the editor UI by IP; leave only `/webhook/*` public.
+4. Set a real `N8N_ENCRYPTION_KEY`; keep it + the DB password in **AWS Secrets Manager**.
+5. Give the EC2 instance a **least-privilege IAM role** that reads only those secrets.
+6. Prune execution data; use built-in credential objects (not custom LLM headers).
+
+## Quick start (hardened)
+```bash
+# once, from an admin session:
+AWS_REGION=us-east-1 ./scripts/create-secrets.sh
+
+# on the EC2 instance (edit N8N_HOST + Caddyfile domain/IP first):
+N8N_HOST=n8n.yourdomain.com ./scripts/load-secrets.sh
+
+# from another machine:
+./scripts/verify-hardening.sh <PUBLIC_IP> n8n.yourdomain.com
+```
+
+## The CVE this fixes (CVE-2026-65589)
+n8n versions before 1.123.64 wrote credentials passed as **custom HTTP headers in LLM
+sub-nodes** into workflow execution records in plaintext (CWE-532). Any authenticated
+user who could view or export executions could harvest them. Fix: upgrade to >= 1.123.64,
+rotate exposed keys, purge old execution data, and use built-in credential objects
+instead of custom headers. Source: n8n advisory GHSA-89gh-3pgc-v5h2.
+
+## Safety note
+`insecure/` is intentionally vulnerable to demonstrate the problem. Do not deploy it.
+Use only fake credentials (e.g. `sk-DEMO-...`) when reproducing the leak.
+
+## License
+MIT - see LICENSE.

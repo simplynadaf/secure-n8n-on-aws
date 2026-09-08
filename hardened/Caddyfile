@@ -1,0 +1,21 @@
+# Caddy reverse proxy for hardened n8n.
+# - Terminates TLS (auto HTTPS via Let's Encrypt for a real domain).
+# - Only /webhook/* is public; the editor + REST API are IP-restricted.
+# Replace n8n.example.com with your domain and 203.0.113.10 with your admin IP/CIDR.
+
+n8n.example.com {
+    # Webhook endpoints must stay public so external services can call them.
+    handle /webhook/* {
+        reverse_proxy n8n:5678
+    }
+    handle /webhook-test/* {
+        reverse_proxy n8n:5678
+    }
+
+    # Everything else (editor UI + REST API) is restricted to known admin IPs.
+    handle {
+        @blocked not remote_ip 203.0.113.10
+        respond @blocked "Forbidden" 403
+        reverse_proxy n8n:5678
+    }
+}

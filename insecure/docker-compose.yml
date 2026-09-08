@@ -1,0 +1,30 @@
+# INSECURE ON PURPOSE - the "before" state. Do NOT deploy this.
+# This is the way most quick tutorials tell you to run n8n. EP1 shows why that is risky
+# in 2026, then the hardened/ version fixes every issue. See ../README.md.
+#
+# Problems demonstrated here (each fixed in ../hardened/):
+#   1. Port 5678 published straight to the host (reachable from the internet).
+#   2. No N8N_ENCRYPTION_KEY -> n8n uses a derived/default key (creds effectively unencrypted).
+#   3. Secrets would be plaintext in this file / .env (no AWS Secrets Manager).
+#   4. Public sign-up left enabled.
+#   5. Execution data kept forever (the CVE-2026-65589 leak class persists).
+#   6. Pinned to an OLD version that predates the CVE-2026-65589 fix (1.123.64).
+
+services:
+  n8n:
+    # OLD image on purpose: < 1.123.64 is affected by CVE-2026-65589
+    image: n8nio/n8n:1.100.0
+    restart: unless-stopped
+    ports:
+      - "5678:5678"          # BAD: editor + API exposed directly to the internet
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      # BAD: no N8N_ENCRYPTION_KEY set
+      # BAD: no execution pruning
+      # BAD: telemetry left on, no session timeout, public signup enabled
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

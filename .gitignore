@@ -1,0 +1,14 @@
+# Secrets and local env - never commit
+.env
+*.env
+*.pem
+*.key
+
+# n8n / docker local state
+n8n_data/
+pg_data/
+
+# OS / editor
+.DS_Store
+__pycache__/
+*.pyc
